@@ -1,0 +1,6 @@
+# You need to public IP addresses
+STUN_IPADDRESS1=x.x.x.x
+STUN_IPADDRESS2=y.y.y.y
+
+# STUN_PORT1=3478
+# STUN_PORT2=3479

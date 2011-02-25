@@ -1,6 +1,3 @@
-# TODO:
-# - init scripts
-#
 # Conditional build:
 %bcond_without	source		# don't build source jar
 
@@ -10,11 +7,14 @@ Summary:	A Java-based STUN server
 Summary(pl.UTF-8):	Serwer STUN napisany w języku Java.
 Name:		jstun
 Version:	0.7.3
-Release:	0.1
+Release:	1
 License:	GPL v2 or Apache v2
 Group:		Development/Languages/Java
 Source0:	http://jstun.javawi.de/%{name}-%{version}.src.tar.gz
 # Source0-md5:	0e2e0c5d52ba339a33472fc3a492e96d
+Source1:	%{name}.sysconfig
+Source2:	%{name}.init
+Source3:	%{name}.sh
 URL:		http://jstun.javawi.de
 BuildRequires:	ant
 BuildRequires:	jar
@@ -24,9 +24,12 @@ BuildRequires:	rpmbuild(macros) >= 1.300
 %if %{with source}
 BuildRequires:	rpmbuild(macros) >= 1.555
 %endif
+BuildRequires:	rpmbuild(macros) >= 1.228
 BuildRequires:	sed >= 4.0
+Requires(post,preun):	/sbin/chkconfig
 Requires:	java-slf4j
 Requires:	jpackage-utils
+Requires:	rc-scripts
 BuildArch:	noarch
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
@@ -57,16 +60,6 @@ Kod źródłowy %{name}.
 %prep
 %setup -q -n STUN
 
-cat > jstun.sh << '__EOF__'
-#!/bin/sh
-
-. %{_datadir}/java-utils/java-functions
-
-CLASSPATH=$(build-classpath jstun slf4j-api slf4j-jdk14)
-MAIN_CLASS=de.javawi.jstun.test.demo.StunServer
-run ${1:+"$@"}
-__EOF__
-
 %build
 export JAVA_HOME="%{java_home}"
 
@@ -87,6 +80,9 @@ rm -rf $RPM_BUILD_ROOT
 install -d $RPM_BUILD_ROOT%{_javadir}
 install -d $RPM_BUILD_ROOT%{_sbindir}
 
+install -d $RPM_BUILD_ROOT/etc/sysconfig
+install -d $RPM_BUILD_ROOT/etc/rc.d/init.d
+
 # jars
 cp -a target/%{name}-%{version}.jar $RPM_BUILD_ROOT%{_javadir}/%{name}-%{version}.jar
 ln -s %{name}-%{version}.jar $RPM_BUILD_ROOT%{_javadir}/%{name}.jar
@@ -95,15 +91,31 @@ ln -s %{name}-%{version}.jar $RPM_BUILD_ROOT%{_javadir}/%{name}.jar
 install -d $RPM_BUILD_ROOT%{_javasrcdir}
 cp -a %{name}.src.jar $RPM_BUILD_ROOT%{_javasrcdir}/%{name}.src.jar
 
-install jstun.sh $RPM_BUILD_ROOT%{_sbindir}/jstun
+install %{SOURCE1} $RPM_BUILD_ROOT/etc/sysconfig/%{name}
+install %{SOURCE2} $RPM_BUILD_ROOT/etc/rc.d/init.d/%{name}
+install %{SOURCE3} $RPM_BUILD_ROOT%{_sbindir}/jstun
+
 %clean
 rm -rf $RPM_BUILD_ROOT
+
+%post
+/sbin/chkconfig --add %{name}
+%service %{name} restart
+
+%preun
+if [ "$1" = "0" ]; then
+	%service -q %{name} stop
+	/sbin/chkconfig --del %{name}
+fi
+
 
 %files
 %defattr(644,root,root,755)
 %{_javadir}/%{name}.jar
 %{_javadir}/%{name}-%{version}.jar
 %attr(755,root,root) %{_sbindir}/jstun
+%attr(754,root,root) /etc/rc.d/init.d/%{name}
+%config(noreplace) %verify(not md5 mtime size) /etc/sysconfig/%{name}
 
 %if %{with source}
 %files source
