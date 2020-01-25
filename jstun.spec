@@ -1,7 +1,6 @@
 # Conditional build:
 %bcond_without	source		# don't build source jar
 
-%include	/usr/lib/rpm/macros.java
 
 Summary:	A Java-based STUN server
 Summary(pl.UTF-8):	Serwer STUN napisany w języku Java.
